@@ -64,6 +64,6 @@ def load_data(year):
                     for bid_zone in ['SE1','SE2','SE3','SE4']:
                         if SE_Prod[area][1]==bid_zone:
                             if SE_Prod[area][0]=='produktion':
-                                Z[bid_zone][SE_tech[tech]][:]=SE_Prod[area][4:]
+                                Z[bid_zone][SE_tech[tech]][0:len(Z[bid_zone][SE_tech[tech]])]=SE_Prod[area][4:]
                     
     return Z
