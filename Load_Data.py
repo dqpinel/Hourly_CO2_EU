@@ -27,7 +27,7 @@ def load_data(year):
     
     Z={}
     for bid_zone in monthly_gen['January'].sort_values(by=['MapCode'],axis=0).MapCode.unique(): #for each unique bidding zone in alphabetical order
-        Z.update({bid_zone:pd.DataFrame(index=pd.date_range('1/1/%s'%year, periods=8760, freq='H'),columns=['Biomass_Gen','Biomass_Cons','Fossil Brown coal/Lignite_Gen','Fossil Brown coal/Lignite_Cons','Fossil Coal-derived gas_Gen','Fossil Coal-derived gas_Cons','Fossil Gas_Gen','Fossil Gas_Cons','Fossil Hard coal_Gen','Fossil Hard coal_Cons','Fossil Oil_Gen','Fossil Oil_Cons','Fossil Oil shale_Gen','Fossil Oil shale_Cons','Fossil Peat_Gen','Fossil Peat_Cons','Geothermal_Gen','Geothermal_Cons','Hydro Pumped Storage_Gen','Hydro Pumped Storage_Cons','Hydro Run-of-river and poundage_Gen','Hydro Run-of-river and poundage_Cons','Hydro Water Reservoir_Gen','Hydro Water Reservoir_Cons','Marine_Gen','Marine_Cons','Nuclear_Gen','Nuclear_Cons','Other_Gen','Other_Cons','Other renewable_Gen','Other renewable_Cons','Solar_Gen','Solar_Cons','Waste_Gen','Waste_Cons','Wind Offshore_Gen','Wind Offshore_Cons','Wind Onshore_Gen','Wind Onshore_Cons'])}) # Create keys for the dictionary
+        Z.update({bid_zone:pd.DataFrame(index=pd.date_range('1/1/%s'%year, end='31/12/%s 23:00'%year, freq='H'),columns=['Biomass_Gen','Biomass_Cons','Fossil Brown coal/Lignite_Gen','Fossil Brown coal/Lignite_Cons','Fossil Coal-derived gas_Gen','Fossil Coal-derived gas_Cons','Fossil Gas_Gen','Fossil Gas_Cons','Fossil Hard coal_Gen','Fossil Hard coal_Cons','Fossil Oil_Gen','Fossil Oil_Cons','Fossil Oil shale_Gen','Fossil Oil shale_Cons','Fossil Peat_Gen','Fossil Peat_Cons','Geothermal_Gen','Geothermal_Cons','Hydro Pumped Storage_Gen','Hydro Pumped Storage_Cons','Hydro Run-of-river and poundage_Gen','Hydro Run-of-river and poundage_Cons','Hydro Water Reservoir_Gen','Hydro Water Reservoir_Cons','Marine_Gen','Marine_Cons','Nuclear_Gen','Nuclear_Cons','Other_Gen','Other_Cons','Other renewable_Gen','Other renewable_Cons','Solar_Gen','Solar_Cons','Waste_Gen','Waste_Cons','Wind Offshore_Gen','Wind Offshore_Cons','Wind Onshore_Gen','Wind Onshore_Cons'])}) # Create keys for the dictionary
     
     length={}
     for month in monthly_flow.keys():
@@ -55,7 +55,7 @@ def load_data(year):
         Z[bid_zone]=Z[bid_zone].fillna(0)
         
     SE_Prod=pd.read_excel('Data\statistik-per-elomrade-och-timme-%s.xlsx'%year)
-    SE_tech={'Ospec.':'Other_Gen','Vattenkraft':'Hydro Water Reservoir_Gen','Vindkraft':'Wind Onshore_Gen','Kärnkraft':'Nuclear_Gen','Värmekraft':'','Gast./diesel':'','Solkraft':'Solar_Gen'}
+    SE_tech={'Ospec.':'Other_Gen','Vattenkraft':'Hydro Water Reservoir_Gen','Vindkraft':'Wind Onshore_Gen','Kärnkraft':'Nuclear_Gen','Värmekraft':'Waste_Gen','Gast./diesel':'Fossil Gas_Gen','Solkraft':'Solar_Gen'}
     
     for tech in SE_tech.keys():
         if tech in SE_Prod.columns:
@@ -67,3 +67,7 @@ def load_data(year):
                                 Z[bid_zone][SE_tech[tech]][0:len(Z[bid_zone][SE_tech[tech]])]=SE_Prod[area][4:]
                     
     return Z
+
+
+#year=2015 # or 2016, 2017, 2018
+#Z=load_data(year)
