@@ -73,6 +73,8 @@ def load_data(year):
     for bid_zone in Z.keys():
         Z[bid_zone]=pd.concat([Z[bid_zone].iloc[:,0:40],Z[bid_zone].iloc[:,40:].sort_index(axis=1)],axis=1) # returns the dataframe with the columns in the correct order: 40 col of gen and cons and then imports in alphabetical order
                     
+    for bid_zone in Z.keys():
+        Z[bid_zone]=Z[bid_zone].replace('-',0)
     return Z
 #%%
 def remove_extra_zones(Z):
