@@ -7,13 +7,12 @@ Created on Mon Oct 14 12:24:22 2019
 
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 
 
-
-def CO2_intensity(Data,E_factors):
+def CO2_intensity(Data,E_factors,year):
     #%%
     
-    Data = Z
     #Assume data is matrix as Z in the original script
     
     """
@@ -21,6 +20,8 @@ def CO2_intensity(Data,E_factors):
     - Zones list (or place to find the range of it)
     - 
     """
+    
+
     
     #Get list of zones that are included
     Zones = []
@@ -35,6 +36,7 @@ def CO2_intensity(Data,E_factors):
     #Get list of columns that are import based
     Imports = []
     Imports_zones = []
+    Imports_only = []
     
     for col in Data["NO1"]:
         if col[0:7] == "Imports":
@@ -42,6 +44,10 @@ def CO2_intensity(Data,E_factors):
             for zone in Zones:
                 if col[13:] == zone:
                     Imports_zones.append(col)
+    for col in Imports:
+        if col[13:] not in Zones:
+            Imports_only.append(col)
+        
 
     #Get list of columns that are generation based
     Generation = []
@@ -56,6 +62,7 @@ def CO2_intensity(Data,E_factors):
     
     #Emission = {}
     Emission = pd.DataFrame(0,index = Time_steps,columns = Zones)
+    mix_country = {}
     Tech_emission = {}
     
     zone_identity = np.zeros((len(Zones),len(Zones)))
@@ -63,62 +70,102 @@ def CO2_intensity(Data,E_factors):
         zone_identity[i,i] = 1
         
     
+    y_zone = {}
+    for i in range(len(Zones)):
+        zone = Zones[i]
+        y_zone[zone] = zone_identity[i,:]
+        
     
     
-    #For each zone in the mix
-    for zone in Zones[0:1]:
+    E_fact = pd.DataFrame(columns = Generation+Imports_only)
+    for col in Generation:
+        E_fact.at[0,col] = E_factors[2][col]
+    
+    for col in Imports_only:
+        E_fact.at[0,col] = E_factors[2][col[13:]]
+    
+    
+    
+    
+    
+        
+    #For each hour in the year
+    for h in tqdm(Time_steps):
+    
+        mix_country[h] = pd.DataFrame(index = Generation+Imports_only, columns = Zones)
         
         
-        Tech_emission[zone] = {}
         
-        #For each hour in the year
-        for h in Time_steps[0:1]:
+        #Create empty dataframe
+        Z_tot = pd.DataFrame(index = Columns, columns = Zones) #94x43
+        
+        #Insert relevant data for each tech, and for each zone
+        for row in Columns:
+            for col in Zones:
+                Z_tot.at[row,col]  = Data[col][row][h]
+        
+        #Sum up the generation from each tech for each zone [1 X zones]
+        Z_sum = Z_tot.sum(axis = 0)
+        
+        #Sets up a diagonal matrix with the sum of generation [zones X zones]
+        Z_diag = pd.DataFrame(0,index = Z_sum.index, columns = Z_sum.index)
+        for zone2 in Zones:
+            Z_diag.at[zone2,zone2] = Z_sum[zone2]
+        
+        #Inverse of the diagonal matrix [zones X zones]
+        Z_trans = pd.DataFrame(np.linalg.pinv(Z_diag.values), index = Z_diag.columns, columns = Z_diag.index)
+        
+        #Finds the weighted generation from each source for each zone [tech X zones]
+        A1 = Z_tot.dot(Z_trans)
+        
+        #Get the data based on imports
+        A = pd.DataFrame(index = Imports_zones, columns = Zones, dtype = float) #WRONG! NOOB!
+        #It should be import from nodes that we have in the system!
+        
+        for row2 in Imports_zones:
+            for col2 in Zones:
+                A.at[row2,col2]  = A1[col2][row2]
+        
+        A_gen = pd.DataFrame(index = Generation+Imports_only, columns = Zones,dtype = float)
+        for row2 in Generation+Imports_only:
+            for col2 in Zones:
+                A_gen.at[row2,col2]  = A1[col2][row2]
+        
+        IA = zone_identity-A
+        IA_inv = pd.DataFrame(np.linalg.pinv(IA.values), index = IA.columns, columns = IA.index)
+        t_IA = A_gen.dot(IA_inv)
+        
+        #Set up identity matrix for the current zone
+        
+        for zone in Zones:
+            mix_country[h][zone] = t_IA.dot(y_zone[zone])
             
-            #Create empty dataframe
-            Z_tot = pd.DataFrame(index = Columns, columns = Zones) #94x43
-            
-            #Insert relevant data for each tech, and for each zone
-            for row in Columns:
-                for col in Zones:
-                   Z_tot.at[row,col]  = Data[col][row][h]
-            
-            #Sum up the generation from each tech for each zone [1 X zones]
-            Z_sum = Z_tot.sum(axis = 0)
-            
-            #Sets up a diagonal matrix with the sum of generation [zones X zones]
-            Z_diag = pd.DataFrame(0,index = Z_sum.index, columns = Z_sum.index)
-            for zone2 in Zones:
-                Z_diag.at[zone2,zone2] = Z_sum[zone2]
-            
-            #Inverse of the diagonal matrix [zones X zones]
-            Z_trans = pd.DataFrame(np.linalg.pinv(Z_diag.values), index = Z_diag.columns, columns = Z_diag.index)
-            
-            #Finds the weighted generation from each source for each zone [tech X zones]
-            A1 = Z_tot.dot(Z_trans)
-            
-            #Get the data based on imports
-            A = pd.DataFrame(index = Imports_zones, columns = Zones) #WRONG! NOOB!
-            #It should be import from nodes that we have in the system!
-            
-            for row2 in Imports_zones:
-                for col2 in Zones:
-                   A.at[row2,col2]  = A1[col2][row2]
-            
-            A_gen = pd.DataFrame(index = Generation, columns = Zones)
-            for row2 in Generation:
-                for col2 in Zones:
-                   A_gen.at[row2,col2]  = A1[col2][row2]
-            
-            I_A = zone_identity-A
-            
-            
-            #Set up identity matrix for the current zone
-            for i in range(len(Zones)):
-                if Zones[i] == zone:
-                    y_zone = zone_identity[i,:]
-                    break
-        break
-    #break
+            Emission.at[h,zone] = E_fact.dot(mix_country[h][zone])
+        #for row in Generation+Imports_only
+    
+    #Change layout for tech per country
+    tech_country = {}
+    for zone in Zones:
+        tech_country[zone] = pd.DataFrame(index = Time_steps,columns = Generation+Imports_only)
+        
+        for row in Time_steps:
+            for col in Generation+Imports_only:
+                tech_country[zone].at[row,col] = mix_country[row][zone][col]
+        
+    
+    #Finished calculating
+    """
+    Start storing the code
+    """
+    
+    with pd.ExcelWriter("CO2_intensity_"+str(year)+ ".xlsx") as writer:
+         
+        Emission.to_excel(writer,sheet_name = "Intensity")
+
+    with pd.ExcelWriter("CO2_technology_"+str(year)+".xlsx") as writer:
+        for zone in tqdm(tech_country):
+            tech_country[zone].to_excel(writer,sheet_name = zone)
+    return()
 
       #%%      
     """
