@@ -10,7 +10,7 @@ import CO2_intensity as CO2
 import pandas as pd
 #%%
 
-for year in [2017,2018]:
+for year in [2017]:
         
     #%%
     
